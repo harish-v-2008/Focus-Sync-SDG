@@ -42,7 +42,7 @@ function AboutPage() {
         ))}
       </div>
 
-      <p className="text-center text-xs text-muted-foreground mt-10">© 2026 Focus Sync. Built with Lovable Cloud + AI.</p>
+      <p className="text-center text-xs text-muted-foreground mt-10">© 2026 Focus Sync. Built with MIRA Cognitive AI Engine.</p>
     </>
   );
 }

@@ -1161,20 +1161,16 @@ Generate complete working code:
 • app.py (Flask backend)
 
 Ensure the design feels like a real startup product, not a basic student project.
+## Tech Stack & Architecture
 
-This project was built with [Lovable](https://lovable.dev).
-
-**Live app**: https://focusync.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/4911e459-79d8-41c1-b3a7-e0a47fa4e298).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+- **Framework**: TanStack Start (Full-stack React) with Vite
+- **Styling**: Tailwind CSS v4 with Midnight Indigo design system & OKLCH color tokens
+- **State & Routing**: TanStack Router & React Query
+- **Backend / DB**: Supabase with client/server persistence & local fallback
+- **AI Engine**: MIRA AI Tutor powered by Google Gemini API
 
 ## Development
+
 
 Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 

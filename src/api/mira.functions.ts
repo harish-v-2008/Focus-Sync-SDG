@@ -11,7 +11,6 @@ const InputSchema = z.object({
 export const chatWithMira = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }) => {
-    const lovableKey = process.env.LOVABLE_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 
     const system = {
@@ -19,27 +18,7 @@ export const chatWithMira = createServerFn({ method: "POST" })
       content: "You are MIRA (My Intelligent Responsive Assistant), the AI tutor inside Focus Sync — a productivity app for students. Be warm, concise, and practical. Explain concepts simply with analogies. Suggest study strategies, plans, and motivation. Use markdown for clarity. Never reveal you are an LLM provider — you are MIRA.",
     };
 
-    // 1. Try Lovable AI gateway if configured
-    if (lovableKey) {
-      try {
-        const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [system, ...data.messages],
-          }),
-        });
-        if (res.ok) {
-          const json = await res.json();
-          return { error: null, reply: json.choices?.[0]?.message?.content ?? "" };
-        }
-      } catch {
-        // continue to next provider
-      }
-    }
-
-    // 2. Try direct Google Gemini API if key is present
+    // 1. Direct Google Gemini API if key is present
     if (geminiKey) {
       try {
         const prompt = data.messages.map((m) => `${m.role === "user" ? "Student" : "MIRA"}: ${m.content}`).join("\n");
@@ -90,35 +69,9 @@ const PlanSchema = z.object({
 export const generatePlan = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => PlanSchema.parse(input))
   .handler(async ({ data }) => {
-    const lovableKey = process.env.LOVABLE_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 
     const prompt = `Generate exactly 5 focused study missions for today as a JSON array. Context: exam=${data.examName ?? "general study"}, daysLeft=${data.daysToExam ?? "unknown"}, subjects=${data.subjects ?? "any"}, totalHours=${data.hoursPerDay}. Each mission: { "title": string, "subject": string, "priority": "high"|"medium"|"low", "duration_minutes": number }. Return ONLY the JSON array, nothing else.`;
-
-    if (lovableKey) {
-      try {
-        const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              { role: "system", content: "You are MIRA, an expert study planner. Always reply with valid JSON only." },
-              { role: "user", content: prompt },
-            ],
-          }),
-        });
-        if (res.ok) {
-          const json = await res.json();
-          const text = json.choices?.[0]?.message?.content ?? "[]";
-          const cleaned = text.replace(/```json|```/g, "").trim();
-          const missions = JSON.parse(cleaned);
-          return { error: null, missions };
-        }
-      } catch {
-        // continue to fallback
-      }
-    }
 
     if (geminiKey) {
       try {
