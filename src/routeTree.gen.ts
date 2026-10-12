@@ -16,6 +16,7 @@ import { Route as AppTrackerRouteImport } from './routes/_app/tracker'
 import { Route as AppTimerRouteImport } from './routes/_app/timer'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppPlannerRouteImport } from './routes/_app/planner'
+import { Route as AppMasteryRouteImport } from './routes/_app/mastery'
 import { Route as AppFocusRouteImport } from './routes/_app/focus'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppChatbotRouteImport } from './routes/_app/chatbot'
@@ -55,6 +56,11 @@ const AppProfileRoute = AppProfileRouteImport.update({
 const AppPlannerRoute = AppPlannerRouteImport.update({
   id: '/planner',
   path: '/planner',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMasteryRoute = AppMasteryRouteImport.update({
+  id: '/mastery',
+  path: '/mastery',
   getParentRoute: () => AppRoute,
 } as any)
 const AppFocusRoute = AppFocusRouteImport.update({
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/chatbot': typeof AppChatbotRoute
   '/dashboard': typeof AppDashboardRoute
   '/focus': typeof AppFocusRoute
+  '/mastery': typeof AppMasteryRoute
   '/planner': typeof AppPlannerRoute
   '/profile': typeof AppProfileRoute
   '/timer': typeof AppTimerRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/chatbot': typeof AppChatbotRoute
   '/dashboard': typeof AppDashboardRoute
   '/focus': typeof AppFocusRoute
+  '/mastery': typeof AppMasteryRoute
   '/planner': typeof AppPlannerRoute
   '/profile': typeof AppProfileRoute
   '/timer': typeof AppTimerRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/_app/chatbot': typeof AppChatbotRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/focus': typeof AppFocusRoute
+  '/_app/mastery': typeof AppMasteryRoute
   '/_app/planner': typeof AppPlannerRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/timer': typeof AppTimerRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/chatbot'
     | '/dashboard'
     | '/focus'
+    | '/mastery'
     | '/planner'
     | '/profile'
     | '/timer'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/chatbot'
     | '/dashboard'
     | '/focus'
+    | '/mastery'
     | '/planner'
     | '/profile'
     | '/timer'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/_app/chatbot'
     | '/_app/dashboard'
     | '/_app/focus'
+    | '/_app/mastery'
     | '/_app/planner'
     | '/_app/profile'
     | '/_app/timer'
@@ -235,6 +247,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPlannerRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/mastery': {
+      id: '/_app/mastery'
+      path: '/mastery'
+      fullPath: '/mastery'
+      preLoaderRoute: typeof AppMasteryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/focus': {
       id: '/_app/focus'
       path: '/focus'
@@ -287,6 +306,7 @@ interface AppRouteChildren {
   AppChatbotRoute: typeof AppChatbotRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppFocusRoute: typeof AppFocusRoute
+  AppMasteryRoute: typeof AppMasteryRoute
   AppPlannerRoute: typeof AppPlannerRoute
   AppProfileRoute: typeof AppProfileRoute
   AppTimerRoute: typeof AppTimerRoute
@@ -300,6 +320,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppChatbotRoute: AppChatbotRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppFocusRoute: AppFocusRoute,
+  AppMasteryRoute: AppMasteryRoute,
   AppPlannerRoute: AppPlannerRoute,
   AppProfileRoute: AppProfileRoute,
   AppTimerRoute: AppTimerRoute,

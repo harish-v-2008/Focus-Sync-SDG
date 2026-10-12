@@ -1,8 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
+import { useTimer } from "@/lib/timer-context";
 import {
   LayoutDashboard, Target, Camera, Timer, ListChecks, LineChart,
-  Sparkles, MessageSquare, User, Info, LogOut, Zap, Menu, X
+  Sparkles, MessageSquare, User, Info, LogOut, Zap, Menu, X, BookOpen,
+  Brain, Coffee, Play, Pause, Maximize2
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +15,7 @@ const NAV = [
   { to: "/camera", label: "Camera", icon: Camera },
   { to: "/timer", label: "Timer", icon: Timer },
   { to: "/tracker", label: "Tracker", icon: ListChecks },
+  { to: "/mastery", label: "Mastery (SRS)", icon: BookOpen },
   { to: "/analytics", label: "Analytics", icon: LineChart },
   { to: "/planner", label: "Planner", icon: Sparkles },
   { to: "/chatbot", label: "MIRA", icon: MessageSquare },
@@ -22,8 +25,12 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
+  const { running, mode, seconds, subject, start, pause } = useTimer();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
+
+  const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const ss = String(seconds % 60).padStart(2, "0");
 
   const SidebarContent = (
     <div className="flex h-full flex-col">
@@ -42,14 +49,21 @@ export function AppShell({ children }: { children: ReactNode }) {
               key={to}
               to={to}
               onClick={() => setOpen(false)}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-smooth ${
+              className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition-smooth ${
                 active
                   ? "bg-gradient-primary text-primary-foreground shadow-glow font-medium"
                   : "text-sidebar-foreground hover:bg-sidebar-accent"
               }`}
             >
-              <Icon className="h-4 w-4" />
-              {label}
+              <div className="flex items-center gap-3">
+                <Icon className="h-4 w-4" />
+                {label}
+              </div>
+              {label === "Timer" && running && (
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-accent text-accent-foreground font-bold tabular-nums shadow-glow animate-pulse">
+                  {mm}:{ss}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -58,7 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="border-t border-sidebar-border p-3">
         <div className="px-3 py-2 mb-1">
           <div className="text-xs text-muted-foreground">Signed in as</div>
-          <div className="text-sm font-medium truncate">{user?.email}</div>
+          <div className="text-sm font-medium truncate">{user?.email || "alex.focus@example.com"}</div>
         </div>
         <Button
           variant="ghost"
@@ -81,9 +95,20 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <span className="font-bold">Focus Sync</span>
         </Link>
-        <Button variant="ghost" size="icon" onClick={() => setOpen(!open)}>
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          {running && path !== "/timer" && (
+            <Link
+              to="/timer"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full glass border border-accent/40 text-accent text-xs font-bold tabular-nums"
+            >
+              <div className="h-2 w-2 rounded-full bg-accent animate-ping" />
+              {mm}:{ss}
+            </Link>
+          )}
+          <Button variant="ghost" size="icon" onClick={() => setOpen(!open)}>
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
       </header>
 
       {/* Sidebar — desktop */}
@@ -101,12 +126,51 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      {/* Main */}
+      {/* Main Content Area */}
       <main className="lg:pl-64 min-h-screen">
         <div className="container mx-auto px-4 md:px-8 py-6 md:py-10 max-w-7xl">
           {children}
         </div>
       </main>
+
+      {/* Persistent Floating Mini-Timer Widget (when outside /timer) */}
+      {path !== "/timer" && running && (
+        <div className="fixed bottom-5 right-5 z-50 glass-strong rounded-2xl p-3 shadow-elegant border border-border/80 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
+          <Link to="/timer" className="flex items-center gap-2.5 hover:opacity-85 transition-opacity">
+            <div className="h-8 w-8 rounded-lg bg-gradient-primary grid place-items-center shadow-glow">
+              {mode === "focus" ? (
+                <Brain className="h-4 w-4 text-primary-foreground" />
+              ) : (
+                <Coffee className="h-4 w-4 text-warning" />
+              )}
+            </div>
+            <div>
+              <div className="text-sm font-bold tabular-nums text-foreground flex items-center gap-1.5">
+                {mm}:{ss}
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-secondary text-muted-foreground font-normal uppercase">
+                  {mode}
+                </span>
+              </div>
+              <div className="text-[11px] text-muted-foreground truncate max-w-[110px]">{subject}</div>
+            </div>
+          </Link>
+          <div className="h-6 w-px bg-border/60" />
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={running ? pause : start}
+            className="h-8 w-8 hover:bg-secondary rounded-lg"
+          >
+            {running ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+          </Button>
+          <Link to="/timer">
+            <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs glass border-border hover:bg-secondary gap-1">
+              <Maximize2 className="h-3 w-3" />
+              <span className="hidden sm:inline">Open</span>
+            </Button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

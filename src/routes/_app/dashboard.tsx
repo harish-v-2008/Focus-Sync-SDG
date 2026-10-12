@@ -6,7 +6,8 @@ import { PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Target, Flame, CalendarClock, Sparkles, ArrowRight, Camera, Timer, MessageSquare } from "lucide-react";
+import { localStore } from "@/lib/storage";
+import { Target, Flame, CalendarClock, Sparkles, ArrowRight, Camera, Timer, MessageSquare, BookOpen, Layers } from "lucide-react";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
@@ -29,56 +30,115 @@ function Dashboard() {
   const [missionsDone, setMissionsDone] = useState(0);
 
   useEffect(() => {
-    if (!user) return;
     const today = new Date().toISOString().split("T")[0];
-    (async () => {
-      const { data: p } = await supabase.from("profiles").select("full_name, exam_name, exam_date, current_streak, daily_goal_hours").eq("id", user.id).maybeSingle();
-      setProfile(p);
-      const { data: sessions } = await supabase.from("study_sessions").select("study_minutes, screen_minutes").eq("user_id", user.id).eq("session_date", today);
-      setTodayMinutes((sessions ?? []).reduce((a, s) => a + (s.study_minutes ?? 0), 0));
-      setTodayScreen((sessions ?? []).reduce((a, s) => a + (s.screen_minutes ?? 0), 0));
-      const { data: m } = await supabase.from("missions").select("completed").eq("user_id", user.id).eq("due_date", today);
-      setMissionsTotal((m ?? []).length);
-      setMissionsDone((m ?? []).filter((x) => x.completed).length);
-    })();
+
+    // 1. Load from local store immediately
+    const localProf = localStore.getProfile();
+    setProfile(localProf);
+
+    const localSessions = localStore.getSessions().filter((s) => s.session_date === today);
+    setTodayMinutes(localSessions.reduce((a, s) => a + (s.study_minutes ?? 0), 0));
+    setTodayScreen(localSessions.reduce((a, s) => a + (s.screen_minutes ?? 0), 0));
+
+    const localMissions = localStore.getMissions(today);
+    setMissionsTotal(localMissions.length);
+    setMissionsDone(localMissions.filter((x) => x.completed).length);
+
+    // 2. Sync with Supabase if logged in with real account
+    if (user && user.id !== "guest-user-101") {
+      (async () => {
+        try {
+          const { data: p } = await supabase
+            .from("profiles")
+            .select("full_name, exam_name, exam_date, current_streak, daily_goal_hours")
+            .eq("id", user.id)
+            .maybeSingle();
+          if (p) setProfile(p);
+
+          const { data: sessions } = await supabase
+            .from("study_sessions")
+            .select("study_minutes, screen_minutes")
+            .eq("user_id", user.id)
+            .eq("session_date", today);
+          if (sessions && sessions.length > 0) {
+            setTodayMinutes(sessions.reduce((a, s) => a + (s.study_minutes ?? 0), 0));
+            setTodayScreen(sessions.reduce((a, s) => a + (s.screen_minutes ?? 0), 0));
+          }
+
+          const { data: m } = await supabase
+            .from("missions")
+            .select("completed")
+            .eq("user_id", user.id)
+            .eq("due_date", today);
+          if (m && m.length > 0) {
+            setMissionsTotal(m.length);
+            setMissionsDone(m.filter((x) => x.completed).length);
+          }
+        } catch {
+          // Keep local store fallback
+        }
+      })();
+    }
   }, [user]);
 
   const goalMin = (profile?.daily_goal_hours ?? 4) * 60;
   const goalPct = Math.min(100, Math.round((todayMinutes / goalMin) * 100));
-  const focusScore = todayMinutes + todayScreen > 0 ? Math.round((todayMinutes / (todayMinutes + todayScreen)) * 100) : 0;
+  const focusScore = todayMinutes + todayScreen > 0 ? Math.round((todayMinutes / (todayMinutes + todayScreen)) * 100) : 85;
   const daysToExam = profile?.exam_date ? Math.max(0, Math.ceil((new Date(profile.exam_date).getTime() - Date.now()) / 86400000)) : null;
 
   return (
     <>
       <PageHeader
-        title={`Hey ${profile?.full_name?.split(" ")[0] ?? "there"} 👋`}
-        description="Here's your focus snapshot for today."
+        title={`Hey ${profile?.full_name?.split(" ")[0] ?? "Alex"} 👋`}
+        description="Here's your cognitive focus snapshot and exam readiness for today."
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={Target} label="Today's Focus Score" value={`${focusScore}%`} hint={focusScore >= 70 ? "Focused 🔥" : focusScore >= 40 ? "Improving" : "Let's go!"} />
-        <StatCard icon={Flame} label="Current Streak" value={`${profile?.current_streak ?? 0} days`} hint="Keep it alive" />
-        <StatCard icon={CalendarClock} label="Exam Countdown" value={daysToExam !== null ? `${daysToExam} d` : "—"} hint={profile?.exam_name ?? "Set in Profile"} />
-        <StatCard icon={Sparkles} label="Missions" value={`${missionsDone} / ${missionsTotal}`} hint={missionsTotal === 0 ? "Generate plan" : "Today"} />
+        <StatCard
+          icon={Target}
+          label="Today's Focus Score"
+          value={`${focusScore}%`}
+          hint={focusScore >= 70 ? "Focused 🔥" : focusScore >= 40 ? "Improving" : "Let's go!"}
+        />
+        <StatCard
+          icon={Flame}
+          label="Current Streak"
+          value={`${profile?.current_streak ?? 7} days`}
+          hint="Consistent momentum"
+        />
+        <StatCard
+          icon={CalendarClock}
+          label="Exam Countdown"
+          value={daysToExam !== null ? `${daysToExam} d` : "45 d"}
+          hint={profile?.exam_name ?? "MCAT / USMLE Finals"}
+        />
+        <StatCard
+          icon={Sparkles}
+          label="Today's Missions"
+          value={`${missionsDone} / ${missionsTotal}`}
+          hint={missionsTotal === 0 ? "Generate plan" : "Completed today"}
+        />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">
         <Card className="lg:col-span-2 glass border-border bg-gradient-card shadow-card">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              Daily Goal
-              <span className="text-sm font-normal text-muted-foreground">{(todayMinutes / 60).toFixed(1)}h / {profile?.daily_goal_hours ?? 4}h</span>
+            <CardTitle className="flex items-center justify-between text-base">
+              Daily Study Target
+              <span className="text-sm font-normal text-muted-foreground">
+                {(todayMinutes / 60).toFixed(1)}h / {profile?.daily_goal_hours ?? 4.5}h goal
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Progress value={goalPct} className="h-3" />
             <div className="grid grid-cols-2 gap-4 pt-2">
-              <div className="glass rounded-xl p-4">
-                <div className="text-xs text-muted-foreground">Study time</div>
+              <div className="glass rounded-xl p-4 border border-border/50">
+                <div className="text-xs text-muted-foreground">Productive Study</div>
                 <div className="text-2xl font-bold mt-1 gradient-text">{(todayMinutes / 60).toFixed(1)}h</div>
               </div>
-              <div className="glass rounded-xl p-4">
-                <div className="text-xs text-muted-foreground">Screen time</div>
+              <div className="glass rounded-xl p-4 border border-border/50">
+                <div className="text-xs text-muted-foreground">Distraction / Screen</div>
                 <div className="text-2xl font-bold mt-1">{(todayScreen / 60).toFixed(1)}h</div>
               </div>
             </div>
@@ -86,12 +146,15 @@ function Dashboard() {
         </Card>
 
         <Card className="glass border-border bg-gradient-card shadow-card">
-          <CardHeader><CardTitle>Quick start</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <QuickLink to="/timer" icon={Timer} label="Start Pomodoro" />
-            <QuickLink to="/camera" icon={Camera} label="Camera Focus" />
-            <QuickLink to="/chatbot" icon={MessageSquare} label="Ask MIRA" />
-            <QuickLink to="/planner" icon={Sparkles} label="Generate Plan" />
+          <CardHeader>
+            <CardTitle className="text-base">Focus Command Center</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2.5">
+            <QuickLink to="/timer" icon={Timer} label="Launch Pomodoro Timer" />
+            <QuickLink to="/camera" icon={Camera} label="Webcam Concentration" />
+            <QuickLink to="/mastery" icon={BookOpen} label="Mastery & Spaced Recall" />
+            <QuickLink to="/chatbot" icon={MessageSquare} label="Ask MIRA AI Tutor" />
+            <QuickLink to="/planner" icon={Sparkles} label="Adaptive Study Planner" />
           </CardContent>
         </Card>
       </div>
@@ -115,9 +178,12 @@ function StatCard({ icon: Icon, label, value, hint }: { icon: React.ComponentTyp
 function QuickLink({ to, icon: Icon, label }: { to: string; icon: React.ComponentType<{ className?: string }>; label: string }) {
   return (
     <Link to={to as "/timer"}>
-      <Button variant="outline" className="w-full justify-between glass border-border hover:bg-secondary">
-        <span className="inline-flex items-center gap-3"><Icon className="h-4 w-4" />{label}</span>
-        <ArrowRight className="h-4 w-4" />
+      <Button variant="outline" className="w-full justify-between glass border-border hover:bg-secondary h-10 text-xs">
+        <span className="inline-flex items-center gap-2.5">
+          <Icon className="h-4 w-4 text-accent" />
+          {label}
+        </span>
+        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
       </Button>
     </Link>
   );

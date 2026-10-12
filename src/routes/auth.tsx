@@ -5,19 +5,26 @@ import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Zap, ArrowLeft, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { Zap, ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
   beforeLoad: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) throw redirect({ to: "/dashboard" });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const isGuest = typeof window !== "undefined" && localStorage.getItem("focusync_guest_mode") === "true";
+      if (session || isGuest) throw redirect({ to: "/dashboard" });
+    } catch (e) {
+      if ((e as { to?: string })?.to) throw e;
+    }
   },
 });
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { enterGuestMode } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,6 +38,12 @@ function AuthPage() {
     });
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const handleGuest = () => {
+    enterGuestMode();
+    toast.success("Welcome, Alex! Demo student session activated.");
+    navigate({ to: "/dashboard" });
+  };
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
@@ -100,7 +113,15 @@ function AuthPage() {
           </p>
         </div>
 
-        <div className="glass-strong rounded-3xl p-8 shadow-elegant">
+        <div className="glass-strong rounded-3xl p-8 shadow-elegant space-y-4">
+          {/* Quick Demo Access */}
+          <Button
+            onClick={handleGuest}
+            className="w-full h-11 bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 border-0 flex items-center justify-center gap-2"
+          >
+            <Sparkles className="h-4 w-4 text-accent" /> Explore Demo Account (1-Click Instant)
+          </Button>
+
           <Button
             onClick={handleGoogle}
             disabled={googleLoading}
@@ -120,9 +141,9 @@ function AuthPage() {
             )}
           </Button>
 
-          <div className="relative my-6">
+          <div className="relative my-4">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-            <div className="relative flex justify-center text-xs"><span className="px-3 bg-card text-muted-foreground">or</span></div>
+            <div className="relative flex justify-center text-xs"><span className="px-3 bg-card text-muted-foreground">or email</span></div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
