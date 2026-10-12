@@ -3,9 +3,9 @@ import tailwindcss from "@tailwindcss/vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { cloudflare } from "@cloudflare/vite-plugin";
+import { nitro } from "nitro/vite";
 
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
   const envDefine: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
@@ -16,12 +16,9 @@ export default defineConfig(({ command, mode }) => {
     tailwindcss(),
     tsConfigPaths({ projects: ["./tsconfig.json"] }),
     tanstackStart(),
+    nitro(),
     viteReact(),
   ];
-
-  if (command === "build") {
-    plugins.push(cloudflare({ viteEnvironment: { name: "ssr" } }));
-  }
 
   return {
     define: envDefine,
